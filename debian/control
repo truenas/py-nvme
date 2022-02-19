@@ -1,0 +1,15 @@
+Source: py-nvme
+Maintainer: Caleb <yocalebo@gmail.com>
+Section: python
+Priority: optional
+Build-Depends: debhelper (>= 12),
+ dh-python,
+ python3-setuptools,
+ python3-dev,
+ cython3,
+Standards-Version: 4.3.0
+
+Package: python3-nvme
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}
+Description: Python bindings for various nvme ioctls on linux

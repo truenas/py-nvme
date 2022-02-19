@@ -1,0 +1,6 @@
+py-nvme (0.1) experimental; urgency=medium
+
+  [ Caleb St. John ]
+  * initial deb package
+
+ -- Caleb <yocalebo@gmail.com>  Fri, 18 Feb 2022 09:00:00 -0500
