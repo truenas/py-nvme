@@ -103,23 +103,24 @@ cdef class NvmeDevice(object):
             if i['resv_status'] == '0x1':
                 return {'generation': d['generation'], 'scopetype': d['scopetype'], 'reservation': i['key']}
 
-    def update_key(self, cur_key, new_key):
-        '''
-        Update an existing `cur_key` with a new `new_key`.
-        '''
+    def __submit_io(self, cur_key=0, new_key=0, cdw10=0):
         cdef nvme.nvme_passthru_cmd pt
         cdef uint64_t[2] payload = [nvme.htole64(cur_key), nvme.htole64(new_key)]
-        cdef int err = -1
 
         memset(&pt, 0, sizeof(pt))
         pt.opcode = nvme.nvme_op_codes.nvme_cmd_resv_register
         pt.nsid = self.nsid
-        pt.cdw10 = (2 & 0x7)
+        pt.cdw10 = cdw10
         pt.addr = <uint64_t><uintptr_t>payload
         pt.data_len = sizeof(payload)
         pt.timeout_ms = NVME_DEFAULT_IOCTL_TIMEOUT_MS
-        err = ioctl(self.fd, nvme.NVME_IOCTL_IO_CMD, &pt)
-        if err < 0:
+        return not bool(ioctl(self.fd, nvme.NVME_IOCTL_IO_CMD, &pt))
+
+    def update_key(self, cur_key, new_key):
+        '''
+        Update an existing `cur_key` with a new `new_key`.
+        '''
+        if not self.__submit_io(cur_key=cur_key, new_key=new_key, cdw10=(2 & 0x7)):
             raise OSError(f'Failed to update current key {cur_key!r} with new key {new_key!r} on {self.dev!r}')
         return True
 
@@ -127,39 +128,15 @@ cdef class NvmeDevice(object):
         '''
         Registers a `key` to a disk ignoring any keys that already exist that are owned by this host.
         '''
-        cdef nvme.nvme_passthru_cmd pt
-        cdef uint64_t[2] payload = [nvme.htole64(0), nvme.htole64(key)]
-        cdef int err = -1
-
-        memset(&pt, 0, sizeof(pt))
-        pt.opcode = nvme.nvme_op_codes.nvme_cmd_resv_register
-        pt.nsid = self.nsid
-        pt.cdw10 = 1 | (2 << 30)
-        pt.addr = <uint64_t><uintptr_t>payload
-        pt.data_len = sizeof(payload)
-        pt.timeout_ms = NVME_DEFAULT_IOCTL_TIMEOUT_MS
-        err = ioctl(self.fd, nvme.NVME_IOCTL_IO_CMD, &pt)
-        if err < 0:
+        if not self.__submit_io(new_key=key, cdw10=(1 | (2 << 30))):
             raise OSError(f'Failed to register key {key!r} on {self.dev!r}')
         return True
-    
+
     def register_new_key(self, key):
         '''
         Registers a new `key` to the disk.
         '''
-        cdef nvme.nvme_passthru_cmd pt
-        cdef uint64_t[2] payload = [nvme.htole64(0), nvme.htole64(key)]
-        cdef int err = -1
-
-        memset(&pt, 0, sizeof(pt))
-        pt.opcode = nvme.nvme_op_codes.nvme_cmd_resv_register
-        pt.nsid = self.nsid
-        pt.cdw10 = 0 | (2 << 30)
-        pt.addr = <uint64_t><uintptr_t>payload
-        pt.data_len = sizeof(payload)
-        pt.timeout_ms = NVME_DEFAULT_IOCTL_TIMEOUT_MS
-        err = ioctl(self.fd, nvme.NVME_IOCTL_IO_CMD, &pt)
-        if err < 0:
+        if not self.__submit_io(new_key=key, cdw10=(0 | (2 << 30))):
             raise OSError(f'Failed to register new key {key!r} on {self.dev!r}')
         return True
     
@@ -168,19 +145,7 @@ cdef class NvmeDevice(object):
         Preempts an existing `cur_key` that is reserving the disk and places a new reservation on the disk
         via `new_key`.
         '''
-        cdef nvme.nvme_passthru_cmd pt
-        cdef uint64_t[2] payload = [nvme.htole64(cur_key), nvme.htole64(new_key)]
-        cdef int err = -1
-
-        memset(&pt, 0, sizeof(pt))
-        pt.opcode = nvme.nvme_op_codes.nvme_cmd_resv_acquire
-        pt.nsid = self.nsid
-        pt.cdw10 = 1 | (1 << 8)
-        pt.addr = <uint64_t><uintptr_t>payload
-        pt.data_len = sizeof(payload)
-        pt.timeout_ms = NVME_DEFAULT_IOCTL_TIMEOUT_MS
-        err = ioctl(self.fd, nvme.NVME_IOCTL_IO_CMD, &pt)
-        if err < 0:
+        if not self.__submit_io(cur_key=cur_key, new_key=new_key, cdw10=(1 | (1 << 8))):
             raise OSError(f'Failed to preempt current key {cur_key!r} with new key {new_key!r} on {self.dev!r}')
         return True
 
@@ -188,18 +153,6 @@ cdef class NvmeDevice(object):
         '''
         Place a write exclusive reservation using `key` on the disk.
         '''
-        cdef nvme.nvme_passthru_cmd pt
-        cdef uint64_t[2] payload = [nvme.htole64(key), nvme.htole64(0)]
-        cdef int err = -1
-
-        memset(&pt, 0, sizeof(pt))
-        pt.opcode = nvme.nvme_op_codes.nvme_cmd_resv_acquire
-        pt.nsid = self.nsid
-        pt.cdw10 = 0 | (1 << 8)
-        pt.addr = <uint64_t><uintptr_t>payload
-        pt.data_len = sizeof(payload)
-        pt.timeout_ms = NVME_DEFAULT_IOCTL_TIMEOUT_MS
-        err = ioctl(self.fd, nvme.NVME_IOCTL_IO_CMD, &pt)
-        if err < 0:
+        if not self.__submit_io(cur_key=key, cdw10=(0 | (1 << 8))):
             raise OSError(f'Failed to reserve {self.dev!r} with {key!r}')
         return True
