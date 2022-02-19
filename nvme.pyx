@@ -66,17 +66,17 @@ cdef class NvmeDevice(object):
         regctl = status.regctl[0] | (status.regctl[1] << 8)
 
         info = {}
-        info['generation'] = f'0x{nvme.le32toh(status.gen):x}'
+        info['generation'] = nvme.le32toh(status.gen)
         info['scopetype'] = status.rtype
         info['number_of_registered_controllers'] = regctl
         info['persist_through_power_loss_state'] = status.ptpls
         info['controllers'] = []
         for i in range(int(min(regctl, (size - 24 / 24)))):
             info['controllers'].append({
-                'controller_id': f'0x{nvme.le16toh(status.ctrlr[i].ctrlr_id):x}',
-                'resv_status': f'0x{status.ctrlr[i].rcsts:x}',
-                'host_id': f'0x{nvme.le64toh(status.ctrlr[i].hostid):x}',
-                'key': f'0x{nvme.le64toh(status.ctrlr[i].rkey):x}'
+                'controller_id': nvme.le16toh(status.ctrlr[i].ctrlr_id),
+                'resv_status': status.ctrlr[i].rcsts,
+                'host_id': nvme.le64toh(status.ctrlr[i].hostid),
+                'key': nvme.le64toh(status.ctrlr[i].rkey)
             })
 
         free(status)
@@ -99,9 +99,11 @@ cdef class NvmeDevice(object):
             3. the reservation key that reserves the disk (reservation)
         '''
         d = self.__resv_report()
-        for i in d['controllers']:
-            if i['resv_status'] == '0x1':
-                return {'generation': d['generation'], 'scopetype': d['scopetype'], 'reservation': i['key']}
+        return {
+            'generation': d['generation'],
+            'scopetype': d['scopetype'],
+            'reservation': d['controllers'][0]['key'] if d['controllers'] else None,
+        }
 
     def __submit_io(self, cur_key=0, new_key=0, cdw10=0):
         cdef nvme.nvme_passthru_cmd pt
