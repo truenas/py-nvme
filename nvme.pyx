@@ -163,6 +163,9 @@ cdef class NvmeDevice(object):
         Place a write exclusive reservation using `key` on the disk.
         '''
         opcode = nvme.nvme_op_codes.nvme_cmd_resv_acquire
-        if not self.__submit_io(cur_key=key, cdw10=(0 | (1 << 8)), opcode=opcode):
+        reservation_acquire_action = (2 & 0x7)
+        reservation_acquire_type = (1 << 8)
+        cdw10 = reservation_acquire_action | reservation_acquire_type
+        if not self.__submit_io(cur_key=key, cdw10=cdw10, opcode=opcode):
             raise OSError(f'Failed to reserve using key {key!r}')
         return True
