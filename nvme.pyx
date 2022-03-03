@@ -145,15 +145,17 @@ cdef class NvmeDevice(object):
         if not self.__submit_io(new_key=key, cdw10=(0 | (2 << 30))):
             raise OSError(f'Failed to register new key {key!r}')
         return True
-    
-    def preempt_key(self, cur_key, new_key):
+
+    def preempt_key(self, cur_key, pr_key):
         '''
-        Preempts an existing `cur_key` that is reserving the disk and places a new reservation on the disk
-        via `new_key`.
+        Preempt the existing `pr_key` with `cur_key`
         '''
         opcode = nvme.nvme_op_codes.nvme_cmd_resv_acquire
-        if not self.__submit_io(cur_key=cur_key, new_key=new_key, cdw10=(1 | (1 << 8)), opcode=opcode):
-            raise OSError(f'Failed to preempt current key {cur_key!r} with new key {new_key!r}')
+        reservation_acquire_action = (2 & 0x7)
+        reservation_acquire_type = (1 << 8)
+        cdw10 = reservation_acquire_action | reservation_acquire_type
+        if not self.__submit_io(cur_key=pr_key, new_key=cur_key, cdw10=cdw10, opcode=opcode):
+            raise OSError(f'Failed to preempt current key {pr_key!r} with new key {cur_key!r}')
         return True
 
     def reserve_key(self, key):
