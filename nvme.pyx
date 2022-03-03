@@ -105,12 +105,12 @@ cdef class NvmeDevice(object):
             'reservation': d['controllers'][0]['key'] if d['controllers'] else None,
         }
 
-    def __submit_io(self, cur_key=0, new_key=0, cdw10=0):
+    def __submit_io(self, cur_key=0, new_key=0, cdw10=0, opcode=nvme.nvme_op_codes.nvme_cmd_resv_register):
         cdef nvme.nvme_passthru_cmd pt
         cdef uint64_t[2] payload = [nvme.htole64(cur_key), nvme.htole64(new_key)]
 
         memset(&pt, 0, sizeof(pt))
-        pt.opcode = nvme.nvme_op_codes.nvme_cmd_resv_register
+        pt.opcode = opcode
         pt.nsid = self.nsid
         pt.cdw10 = cdw10
         pt.addr = <uint64_t><uintptr_t>payload
@@ -147,7 +147,8 @@ cdef class NvmeDevice(object):
         Preempts an existing `cur_key` that is reserving the disk and places a new reservation on the disk
         via `new_key`.
         '''
-        if not self.__submit_io(cur_key=cur_key, new_key=new_key, cdw10=(1 | (1 << 8))):
+        opcode = nvme.nvme_op_codes.nvme_cmd_resv_acquire
+        if not self.__submit_io(cur_key=cur_key, new_key=new_key, cdw10=(1 | (1 << 8)), opcode=opcode):
             raise OSError(f'Failed to preempt current key {cur_key!r} with new key {new_key!r}')
         return True
 
@@ -155,6 +156,7 @@ cdef class NvmeDevice(object):
         '''
         Place a write exclusive reservation using `key` on the disk.
         '''
-        if not self.__submit_io(cur_key=key, cdw10=(0 | (1 << 8))):
+        opcode = nvme.nvme_op_codes.nvme_cmd_resv_acquire
+        if not self.__submit_io(cur_key=key, cdw10=(0 | (1 << 8)), opcode=opcode):
             raise OSError(f'Failed to reserve using key {key!r}')
         return True
