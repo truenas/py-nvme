@@ -24,12 +24,12 @@ cdef class NvmeDevice(object):
             # get file descriptor
             self.fd = open(self.dev, O_RDONLY)
             if self.fd == -1:
-                raise OSError(f'Failed to open {self.dev!r}')
+                raise OSError('Failed to open device')
 
             # get namespace id
             self.nsid = ioctl(self.fd, nvme.NVME_IOCTL_ID)
             if self.nsid <= 0:
-                raise OSError(f'Failed to get namespace ID for {self.dev!r}')
+                raise OSError('Failed to get namespace ID')
 
     def __dealloc__(self):
         with nogil:
@@ -60,7 +60,7 @@ cdef class NvmeDevice(object):
         pt.timeout_ms = NVME_DEFAULT_IOCTL_TIMEOUT_MS
         err = ioctl(self.fd, nvme.NVME_IOCTL_IO_CMD, &pt)
         if err < 0:
-            raise OSError(f'Failed to issue ioctl to {self.dev!r}')
+            raise OSError('Failed to issue ioctl')
 
         # registered controllers
         regctl = status.regctl[0] | (status.regctl[1] << 8)
@@ -123,7 +123,7 @@ cdef class NvmeDevice(object):
         Update an existing `cur_key` with a new `new_key`.
         '''
         if not self.__submit_io(cur_key=cur_key, new_key=new_key, cdw10=(2 & 0x7)):
-            raise OSError(f'Failed to update current key {cur_key!r} with new key {new_key!r} on {self.dev!r}')
+            raise OSError(f'Failed to update current key {cur_key!r} with new key {new_key!r}')
         return True
 
     def register_ignore_key(self, key):
@@ -131,7 +131,7 @@ cdef class NvmeDevice(object):
         Registers a `key` to a disk ignoring any keys that already exist that are owned by this host.
         '''
         if not self.__submit_io(new_key=key, cdw10=(1 | (2 << 30))):
-            raise OSError(f'Failed to register key {key!r} on {self.dev!r}')
+            raise OSError(f'Failed to register key {key!r}')
         return True
 
     def register_new_key(self, key):
@@ -139,7 +139,7 @@ cdef class NvmeDevice(object):
         Registers a new `key` to the disk.
         '''
         if not self.__submit_io(new_key=key, cdw10=(0 | (2 << 30))):
-            raise OSError(f'Failed to register new key {key!r} on {self.dev!r}')
+            raise OSError(f'Failed to register new key {key!r}')
         return True
     
     def preempt_key(self, cur_key, new_key):
@@ -148,7 +148,7 @@ cdef class NvmeDevice(object):
         via `new_key`.
         '''
         if not self.__submit_io(cur_key=cur_key, new_key=new_key, cdw10=(1 | (1 << 8))):
-            raise OSError(f'Failed to preempt current key {cur_key!r} with new key {new_key!r} on {self.dev!r}')
+            raise OSError(f'Failed to preempt current key {cur_key!r} with new key {new_key!r}')
         return True
 
     def reserve_key(self, key):
@@ -156,5 +156,5 @@ cdef class NvmeDevice(object):
         Place a write exclusive reservation using `key` on the disk.
         '''
         if not self.__submit_io(cur_key=key, cdw10=(0 | (1 << 8))):
-            raise OSError(f'Failed to reserve {self.dev!r} with {key!r}')
+            raise OSError(f'Failed to reserve using key {key!r}')
         return True
