@@ -112,7 +112,7 @@ cdef class NvmeDevice(object):
         memset(&pt, 0, sizeof(pt))
         pt.opcode = opcode
         pt.nsid = self.nsid
-        pt.cdw10 = cdw10
+        pt.cdw10 = <uint32_t>cdw10
         pt.addr = <uint64_t><uintptr_t>payload
         pt.data_len = sizeof(payload)
         pt.timeout_ms = NVME_DEFAULT_IOCTL_TIMEOUT_MS
