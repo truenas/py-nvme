@@ -1,4 +1,6 @@
 # cython: language_level=3, c_string_type=unicode, c_string_encoding=default
+from os import strerror
+
 from posix.ioctl cimport ioctl
 from posix.fcntl cimport open, O_RDONLY
 from posix.stdlib cimport posix_memalign
@@ -6,6 +8,7 @@ from posix.unistd cimport close
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t, uintptr_t
 from libc.string cimport memset
 from libc.stdlib cimport free
+from libc.errno cimport errno
 
 from pxd cimport nvme
 
@@ -24,12 +27,12 @@ cdef class NvmeDevice(object):
             # get file descriptor
             self.fd = open(self.dev, O_RDONLY)
             if self.fd == -1:
-                raise OSError('Failed to open device')
+                raise OSError(errno, strerror(errno), self.dev)
 
             # get namespace id
             self.nsid = ioctl(self.fd, nvme.NVME_IOCTL_ID)
             if self.nsid <= 0:
-                raise OSError('Failed to get namespace ID')
+                raise OSError(errno, strerror(errno), self.dev)
 
     def __dealloc__(self):
         with nogil:
