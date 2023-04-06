@@ -115,7 +115,7 @@ cdef class NvmeDevice(object):
         memset(&pt, 0, sizeof(pt))
         pt.opcode = opcode
         pt.nsid = self.nsid
-        pt.cdw10 = <uint32_t>cdw10
+        pt.cdw10 = nvme.htole32(<uint32_t>cdw10)
         pt.addr = <uint64_t><uintptr_t>payload
         pt.data_len = sizeof(payload)
         pt.timeout_ms = NVME_DEFAULT_IOCTL_TIMEOUT_MS
@@ -154,8 +154,8 @@ cdef class NvmeDevice(object):
         Preempt the existing `pr_key` with `cur_key`
         '''
         opcode = nvme.nvme_op_codes.nvme_cmd_resv_acquire
-        reservation_acquire_action = (2 & 0x7)
-        reservation_acquire_type = (1 << 8)
+        reservation_acquire_action = (nvme.resv_acquire_action.preempt & 0x7)
+        reservation_acquire_type = (nvme.resv_type.write_exclusive << 8)
         cdw10 = reservation_acquire_action | reservation_acquire_type
         if not self.__submit_io(cur_key=pr_key, new_key=cur_key, cdw10=cdw10, opcode=opcode):
             raise OSError(f'Failed to preempt current key {pr_key!r} with new key {cur_key!r}')
@@ -166,8 +166,8 @@ cdef class NvmeDevice(object):
         Place a write exclusive reservation using `key` on the disk.
         '''
         opcode = nvme.nvme_op_codes.nvme_cmd_resv_acquire
-        reservation_acquire_action = (2 & 0x7)
-        reservation_acquire_type = (1 << 8)
+        reservation_acquire_action = (nvme.resv_acquire_action.acquire & 0x7)
+        reservation_acquire_type = (nvme.resv_type.write_exclusive << 8)
         cdw10 = reservation_acquire_action | reservation_acquire_type
         if not self.__submit_io(cur_key=key, cdw10=cdw10, opcode=opcode):
             raise OSError(f'Failed to reserve using key {key!r}')
