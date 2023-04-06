@@ -2,10 +2,28 @@
 
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 
+# NVMe SPEC: https://nvmexpress.org/wp-content/uploads/NVMe-NVM-Express-2.0a-2021.07.26-Ratified.pdf
+
+# See 7.2, Figure 392 Reservation Acquire - Command Dword 10
+cdef enum resv_acquire_action:
+    acquire = 0x00
+    preempt = 0x01
+    preempt_and_abort = 0x02
+
+# See 7.4, Figure 394 Reservation Type Encoding
+ctypedef enum resv_type:
+    write_exclusive = 0x01
+    exclusive_access = 0x02
+    write_exclusive_registrants_only = 0x03
+    exclusive_access_registrants_only = 0x04
+    write_exclusive_all_registrants = 0x05
+    exclusive_access_all_registrants = 0x06
+
 cdef extern from "endian.h":
     uint16_t le16toh(uint16_t)
     uint32_t le32toh(uint32_t)
     uint64_t le64toh(uint64_t)
+    uint32_t htole32(uint32_t)
     uint64_t htole64(uint64_t)
 
 cdef extern from "unistd.h":
