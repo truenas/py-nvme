@@ -133,7 +133,7 @@ cdef class NvmeDevice(object):
         '''
         Registers a `key` to a disk ignoring any keys that already exist that are owned by this host.
         '''
-        reservation_registration_action = (0 & 0x7)
+        reservation_registration_action = (nvme.resv_register_action.replace & 0x7)
         ignore_existing_registration_key = (1 << 3)
         change_persist_thru_powerloss = (2 << 30)
         cdw10 = reservation_registration_action | ignore_existing_registration_key | change_persist_thru_powerloss
@@ -145,7 +145,11 @@ cdef class NvmeDevice(object):
         '''
         Registers a new `key` to the disk.
         '''
-        if not self.__submit_io(new_key=key, cdw10=(0 | (2 << 30))):
+        reservation_registration_action = (nvme.resv_register_action.register & 0x7)
+        ignore_existing_registration_key = 0
+        change_persist_thru_powerloss = (2 << 30)
+        cdw10 = reservation_registration_action | ignore_existing_registration_key | change_persist_thru_powerloss
+        if not self.__submit_io(new_key=key, cdw10=cdw10):
             raise OSError(f'Failed to register new key {key!r}')
         return True
 
