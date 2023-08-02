@@ -4,11 +4,17 @@ from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 
 # NVMe SPEC: https://nvmexpress.org/wp-content/uploads/NVMe-NVM-Express-2.0a-2021.07.26-Ratified.pdf
 
-# See 7.2, Figure 392 Reservation Acquire - Command Dword 10
+# See 7.2, Figure 392 Reservation Acquire - Command Dword 10 (Bits 02:00)
 cdef enum resv_acquire_action:
     acquire = 0x00
     preempt = 0x01
     preempt_and_abort = 0x02
+
+# See 7.3, Figure 396: Reservation Register – Command Dword 10 (Bits 02:00)
+cdef enum resv_register_action:
+    register = 0x00
+    unregister = 0x01
+    replace = 0x02
 
 # See 7.4, Figure 394 Reservation Type Encoding
 ctypedef enum resv_type:
