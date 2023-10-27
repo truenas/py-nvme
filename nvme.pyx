@@ -133,12 +133,25 @@ cdef class NvmeDevice(object):
         '''
         Registers a `key` to a disk ignoring any keys that already exist that are owned by this host.
         '''
-        reservation_registration_action = (nvme.resv_register_action.replace & 0x7)
+        reservation_registration_action = (nvme.resv_register_action.register & 0x7)
         ignore_existing_registration_key = (1 << 3)
         change_persist_thru_powerloss = (2 << 30)
         cdw10 = reservation_registration_action | ignore_existing_registration_key | change_persist_thru_powerloss
         if not self.__submit_io(new_key=key, cdw10=cdw10):
-            raise OSError(f'Failed to register key {key!r}')
+            # NVMe reservation related commands have a notion of replace while scsi
+            # does not. To make it even more confusing, we have drives that behave
+            # differently (some succeed, some do not) when a request is sent to replace
+            # and ignore any existing keys on the nvme disk. This is a subtle behavioral
+            # difference between scsi and nvme since scsi doesn’t have a notion of “replace”,
+            # it just has a “register and ignore”.
+
+            # We sent a traditional "register and ignore" command, which failed. Now let's
+            # try a "replace and ignore"
+            reservation_registration_action = (nvme.resv_register_action.replace & 0x7)
+            cdw10 = reservation_registration_action | ignore_existing_registration_key | change_persist_thru_powerloss
+            if not self.__submit_io(new_key=key, cdw10=cdw10):
+                raise OSError(f'Failed to register, ignore and register, replace key {key!r}')
+
         return True
 
     def register_new_key(self, key):
